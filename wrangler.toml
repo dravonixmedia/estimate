@@ -3,6 +3,13 @@ main = ".open-next/worker.js"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
 
+# Cloudflare Workers Builds (and a bare `wrangler deploy`) only run one
+# command by default. Without this hook, `.open-next/` never gets
+# generated and deploy fails with "Could not find compiled Open Next
+# config". This runs the OpenNext build automatically before every deploy.
+[build]
+command = "npm run cf:build"
+
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
