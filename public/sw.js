@@ -1,5 +1,5 @@
 const CACHE_NAME = "dravonix-estimator-v1";
-const APP_SHELL = ["/", "/brand/icon.svg", "/brand/logo-light.svg", "/manifest.webmanifest"];
+const APP_SHELL = ["/", "/brand/icon.png", "/brand/logo-light.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));

@@ -12,18 +12,26 @@ type LogoProps = {
 
 const SOURCES = {
   full: {
-    light: "/brand/logo-light.svg",
-    dark: "/brand/logo-dark.svg",
+    light: "/brand/logo-light.png",
+    dark: "/brand/logo-dark.png",
   },
   mark: {
-    light: "/brand/icon.svg",
-    dark: "/brand/icon.svg",
+    light: "/brand/icon.png",
+    dark: "/brand/icon.png",
   },
 } as const;
 
+// Matches each source file's real pixel aspect ratio so next/image never
+// stretches or letterboxes it.
 const DIMENSIONS = {
-  full: { width: 158, height: 44 },
-  mark: { width: 36, height: 36 },
+  full: {
+    light: { width: 3207, height: 710 },
+    dark: { width: 3600, height: 1028 },
+  },
+  mark: {
+    light: { width: 797, height: 710 },
+    dark: { width: 797, height: 710 },
+  },
 } as const;
 
 /**
@@ -34,7 +42,7 @@ const DIMENSIONS = {
  */
 export function Logo({ variant = "full", theme = "light", className, href = "/", priority }: LogoProps) {
   const src = SOURCES[variant][theme];
-  const { width, height } = DIMENSIONS[variant];
+  const { width, height } = DIMENSIONS[variant][theme];
 
   const image = (
     <Image

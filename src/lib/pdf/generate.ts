@@ -25,7 +25,23 @@ export async function generateEstimatePdf(data: ResultPageData, reference: strin
 
   let cursor: Cursor = { page: doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]), y: PAGE_HEIGHT - MARGIN };
 
-  cursor = drawHeading(doc, cursor, bold, "Dravonix Media", 20, BRAND_PRIMARY);
+  const mark = await embedBrandMark(doc);
+  if (mark) {
+    const markHeight = 26;
+    const markWidth = (mark.width / mark.height) * markHeight;
+    cursor.page.drawImage(mark, { x: MARGIN, y: cursor.y - markHeight, width: markWidth, height: markHeight });
+    cursor.page.drawText("Dravonix", {
+      x: MARGIN + markWidth + 10,
+      y: cursor.y - markHeight + 5,
+      size: 20,
+      font: bold,
+      color: BRAND_TEXT,
+    });
+    cursor = { page: cursor.page, y: cursor.y - markHeight - 8 };
+  } else {
+    cursor = drawHeading(doc, cursor, bold, "Dravonix Media", 20, BRAND_PRIMARY);
+  }
+
   cursor = drawText(cursor, regular, "Preliminary Project Estimate", 11, BRAND_MUTED);
   cursor = spacer(cursor, 16);
 
@@ -93,6 +109,24 @@ export async function generateEstimatePdf(data: ResultPageData, reference: strin
   cursor = drawText(cursor, regular, publicEnv.NEXT_PUBLIC_CONTACT_EMAIL, 9, BRAND_MUTED);
 
   return doc.save();
+}
+
+/**
+ * Loads the brand mark over HTTP rather than `node:fs` — this module also
+ * runs on Cloudflare Workers (via OpenNext), which have no filesystem
+ * access to `public/`. Falls back to a plain text wordmark if the fetch
+ * fails for any reason, so PDF generation never breaks on this.
+ */
+async function embedBrandMark(doc: PDFDocument) {
+  try {
+    const response = await fetch(new URL("/brand/icon.png", publicEnv.NEXT_PUBLIC_ESTIMATOR_URL));
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return await doc.embedPng(bytes);
+  } catch (error) {
+    console.error("[pdf] Failed to embed brand mark:", error);
+    return null;
+  }
 }
 
 function ensureSpace(doc: PDFDocument, cursor: Cursor, needed: number): Cursor {
