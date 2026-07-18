@@ -14,6 +14,10 @@ command = "npm run cf:build"
 directory = ".open-next/assets"
 binding = "ASSETS"
 
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # Custom domain: attach estimate.dravonix.dev to this Worker via
 # Cloudflare Pages/Workers custom domains (see README "Cloudflare
 # deployment"). Environment variables and secrets are configured through
