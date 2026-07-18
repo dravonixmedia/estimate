@@ -16,19 +16,31 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
  */
 function readCloudflareEnv(): Record<string, string | undefined> | null {
   try {
-    return getCloudflareContext().env as Record<string, string | undefined>;
-  } catch {
+    const env = getCloudflareContext().env as Record<string, string | undefined>;
+    console.log("[server-env] getCloudflareContext() succeeded, keys:", Object.keys(env));
+    return env;
+  } catch (error) {
+    console.log("[server-env] getCloudflareContext() threw:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
 
 export function getServerEnv() {
   const cf = readCloudflareEnv();
-  return {
+  const result = {
     SUPABASE_URL: cf?.SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
     SUPABASE_ANON_KEY: cf?.SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
     SUPABASE_SERVICE_ROLE_KEY: cf?.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
     CLAUDE_API_KEY: cf?.CLAUDE_API_KEY ?? process.env.CLAUDE_API_KEY ?? "",
     CLAUDE_MODEL: cf?.CLAUDE_MODEL ?? process.env.CLAUDE_MODEL ?? "claude-sonnet-5",
   };
+  console.log("[server-env] resolved (presence only):", {
+    SUPABASE_URL: !!result.SUPABASE_URL,
+    SUPABASE_ANON_KEY: !!result.SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: !!result.SUPABASE_SERVICE_ROLE_KEY,
+    CLAUDE_API_KEY: !!result.CLAUDE_API_KEY,
+    fromCloudflareContext: !!cf,
+    processEnvKeysAvailable: Object.keys(process.env).filter((k) => k.includes("SUPABASE") || k.includes("CLAUDE")),
+  });
+  return result;
 }
