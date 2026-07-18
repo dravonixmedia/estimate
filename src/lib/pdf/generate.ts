@@ -1,8 +1,24 @@
 import "server-only";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { ResultPageData } from "@/lib/estimator/fetch-estimate";
-import { formatCurrencyRange, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { publicEnv } from "@/lib/env";
+
+// pdf-lib's built-in standard fonts only support WinAnsiEncoding, which
+// does not include ₹ (U+20B9) — that throws at draw time. The web UI
+// keeps the real ₹ symbol (formatCurrency in lib/format.ts); the PDF uses
+// "Rs." instead since embedding a custom Unicode font is unnecessary
+// complexity for a symbol substitution.
+const inr = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
+
+function formatCurrencyPdf(value: number): string {
+  return `Rs. ${inr.format(value)}`;
+}
+
+function formatCurrencyRangePdf(min: number, max: number): string {
+  if (min === max) return formatCurrencyPdf(min);
+  return `${formatCurrencyPdf(min)} - ${formatCurrencyPdf(max)}`;
+}
 
 const BRAND_PRIMARY = rgb(0x25 / 255, 0x63 / 255, 0xeb / 255);
 const BRAND_TEXT = rgb(0x0b / 255, 0x12 / 255, 0x20 / 255);
@@ -58,7 +74,7 @@ export async function generateEstimatePdf(data: ResultPageData, reference: strin
     bold,
     regular,
     "One-time",
-    formatCurrencyRange(data.estimate.one_time_min, data.estimate.one_time_max)
+    formatCurrencyRangePdf(data.estimate.one_time_min, data.estimate.one_time_max)
   );
   if (data.estimate.monthly_min > 0) {
     cursor = drawLabelValue(
@@ -66,7 +82,7 @@ export async function generateEstimatePdf(data: ResultPageData, reference: strin
       bold,
       regular,
       "Monthly",
-      `${formatCurrencyRange(data.estimate.monthly_min, data.estimate.monthly_max)} / month`
+      `${formatCurrencyRangePdf(data.estimate.monthly_min, data.estimate.monthly_max)} / month`
     );
   }
   cursor = drawLabelValue(cursor, bold, regular, "Estimated timeline", data.estimate.estimated_timeline_label);
@@ -75,7 +91,7 @@ export async function generateEstimatePdf(data: ResultPageData, reference: strin
 
   cursor = drawHeading(doc, cursor, bold, "Service Breakdown", 14, BRAND_TEXT);
   for (const item of data.items) {
-    const priceText = `${formatCurrencyRange(item.price_min, item.price_max)}${item.unit === "monthly" ? " /mo" : ""}`;
+    const priceText = `${formatCurrencyRangePdf(item.price_min, item.price_max)}${item.unit === "monthly" ? " /mo" : ""}`;
     cursor = drawRow(doc, cursor, regular, bold, item.name, priceText);
   }
   cursor = spacer(cursor, 10);
@@ -129,6 +145,16 @@ async function embedBrandMark(doc: PDFDocument) {
   }
 }
 
+/**
+ * Strips any character the built-in WinAnsi-encoded standard fonts can't
+ * render (e.g. ₹, most non-Latin scripts, emoji) so a client name or
+ * other user-supplied text can never crash PDF generation the way the ₹
+ * symbol did. Only ASCII + Latin-1 supplement pass through unchanged.
+ */
+function safe(text: string): string {
+  return text.replace(/[^\x20-\x7E\xA0-\xFF]/g, "?");
+}
+
 function ensureSpace(doc: PDFDocument, cursor: Cursor, needed: number): Cursor {
   if (cursor.y - needed > MARGIN) return cursor;
   const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
@@ -137,16 +163,17 @@ function ensureSpace(doc: PDFDocument, cursor: Cursor, needed: number): Cursor {
 
 function drawHeading(doc: PDFDocument, cursor: Cursor, font: PDFFont, text: string, size: number, color: ReturnType<typeof rgb>): Cursor {
   const c = ensureSpace(doc, cursor, size + 12);
-  c.page.drawText(text, { x: MARGIN, y: c.y - size, size, font, color });
+  c.page.drawText(safe(text), { x: MARGIN, y: c.y - size, size, font, color });
   return { page: c.page, y: c.y - size - 10 };
 }
 
 function drawText(cursor: Cursor, font: PDFFont, text: string, size: number, color: ReturnType<typeof rgb>): Cursor {
-  cursor.page.drawText(text, { x: MARGIN, y: cursor.y - size, size, font, color });
+  cursor.page.drawText(safe(text), { x: MARGIN, y: cursor.y - size, size, font, color });
   return { page: cursor.page, y: cursor.y - size - 6 };
 }
 
-function drawParagraph(doc: PDFDocument, cursor: Cursor, font: PDFFont, text: string, size: number, color: ReturnType<typeof rgb>): Cursor {
+function drawParagraph(doc: PDFDocument, cursor: Cursor, font: PDFFont, rawText: string, size: number, color: ReturnType<typeof rgb>): Cursor {
+  const text = safe(rawText);
   const maxWidth = PAGE_WIDTH - MARGIN * 2;
   const words = text.split(" ");
   let line = "";
@@ -170,14 +197,18 @@ function drawParagraph(doc: PDFDocument, cursor: Cursor, font: PDFFont, text: st
   return c;
 }
 
-function drawLabelValue(cursor: Cursor, boldFont: PDFFont, regularFont: PDFFont, label: string, value: string): Cursor {
+function drawLabelValue(cursor: Cursor, boldFont: PDFFont, regularFont: PDFFont, rawLabel: string, rawValue: string): Cursor {
+  const label = safe(rawLabel);
+  const value = safe(rawValue);
   const size = 10;
   cursor.page.drawText(`${label}:`, { x: MARGIN, y: cursor.y - size, size, font: boldFont, color: BRAND_TEXT });
   cursor.page.drawText(value, { x: MARGIN + 130, y: cursor.y - size, size, font: regularFont, color: BRAND_TEXT });
   return { page: cursor.page, y: cursor.y - size - 8 };
 }
 
-function drawRow(doc: PDFDocument, cursor: Cursor, regularFont: PDFFont, boldFont: PDFFont, label: string, value: string): Cursor {
+function drawRow(doc: PDFDocument, cursor: Cursor, regularFont: PDFFont, boldFont: PDFFont, rawLabel: string, rawValue: string): Cursor {
+  const label = safe(rawLabel);
+  const value = safe(rawValue);
   const c = ensureSpace(doc, cursor, 20);
   const size = 10;
   c.page.drawText(label, { x: MARGIN, y: c.y - size, size, font: regularFont, color: BRAND_TEXT });
@@ -186,7 +217,8 @@ function drawRow(doc: PDFDocument, cursor: Cursor, regularFont: PDFFont, boldFon
   return { page: c.page, y: c.y - size - 10 };
 }
 
-function drawBullet(doc: PDFDocument, cursor: Cursor, font: PDFFont, text: string): Cursor {
+function drawBullet(doc: PDFDocument, cursor: Cursor, font: PDFFont, rawText: string): Cursor {
+  const text = safe(rawText);
   const size = 9.5;
   const maxWidth = PAGE_WIDTH - MARGIN * 2 - 12;
   const words = text.split(" ");
