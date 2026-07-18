@@ -18,8 +18,15 @@ binding = "ASSETS"
 enabled = true
 invocation_logs = true
 
-# Custom domain: attach estimate.dravonix.dev to this Worker via
-# Cloudflare Pages/Workers custom domains (see README "Cloudflare
-# deployment"). Environment variables and secrets are configured through
-# `wrangler secret put <NAME>` or the Cloudflare dashboard — do not commit
-# real values here.
+# Non-secret runtime config. `wrangler deploy` treats this file as the
+# authoritative source of Worker vars on every deploy — plaintext
+# variables added only through the dashboard UI get silently dropped by
+# the next Git-triggered deployment (confirmed: this happened repeatedly
+# in production). SUPABASE_URL and SUPABASE_ANON_KEY are safe to commit —
+# the anon/publishable key is designed to be public, protected by Row
+# Level Security, not secrecy. TRUE secrets (SUPABASE_SERVICE_ROLE_KEY,
+# CLAUDE_API_KEY) must stay dashboard/`wrangler secret`-only and never be
+# added here.
+[vars]
+SUPABASE_URL = "https://npcaeaxvypndskgmtvph.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_qNM2a48RQ88fsl8R3yO3Eg_IUwUmHKO"
