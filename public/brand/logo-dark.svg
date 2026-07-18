@@ -1,0 +1,11 @@
+<svg width="360" height="100" viewBox="0 0 360 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dravonix Media logo">
+  <defs>
+    <linearGradient id="dravonixMarkGradientDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+  </defs>
+  <path fill="url(#dravonixMarkGradientDark)" d="M12 10 H42 A40 40 0 0 1 42 90 H12 Z" />
+  <path fill="#0B1220" d="M20 34 L46 50 L20 66 Z" />
+  <text x="100" y="66" font-family="Space Grotesk, Arial, sans-serif" font-weight="700" font-size="52" fill="#F8FAFC" letter-spacing="-1">Dravoni<tspan fill="#38BDF8">x</tspan></text>
+</svg>

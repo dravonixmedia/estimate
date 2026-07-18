@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/**
+ * Dravonix design tokens.
+ * Source: uploaded Dravonix Media brand sheet.
+ * Do not hardcode brand colours anywhere else — always reference these tokens.
+ */
+:root {
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-secondary: #06b6d4;
+  --brand-accent: #38bdf8;
+  --brand-background: #f8fafc;
+  --brand-surface: #ffffff;
+  --brand-surface-dark: #0b1220;
+  --brand-text: #0b1220;
+  --brand-text-inverted: #f8fafc;
+  --brand-muted: #334155;
+  --brand-muted-foreground: #64748b;
+  --brand-border: #e2e8f0;
+  --brand-border-dark: #334155;
+  --brand-success: #16a34a;
+  --brand-warning: #d97706;
+  --brand-danger: #dc2626;
+
+  --radius: 0.75rem;
+
+  --background: var(--brand-background);
+  --foreground: var(--brand-text);
+}
+
+@theme inline {
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-hover: var(--brand-primary-hover);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-background: var(--brand-background);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-surface-dark: var(--brand-surface-dark);
+  --color-brand-text: var(--brand-text);
+  --color-brand-text-inverted: var(--brand-text-inverted);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-muted-foreground: var(--brand-muted-foreground);
+  --color-brand-border: var(--brand-border);
+  --color-brand-border-dark: var(--brand-border-dark);
+  --color-brand-success: var(--brand-success);
+  --color-brand-warning: var(--brand-warning);
+  --color-brand-danger: var(--brand-danger);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-space-grotesk);
+
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.25rem);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+* {
+  border-color: var(--brand-border);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}

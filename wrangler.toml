@@ -1,0 +1,14 @@
+name = "dravonix-project-estimator"
+main = ".open-next/worker.js"
+compatibility_date = "2024-12-30"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Custom domain: attach estimate.dravonix.dev to this Worker via
+# Cloudflare Pages/Workers custom domains (see README "Cloudflare
+# deployment"). Environment variables and secrets are configured through
+# `wrangler secret put <NAME>` or the Cloudflare dashboard — do not commit
+# real values here.
