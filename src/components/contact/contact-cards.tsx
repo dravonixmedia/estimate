@@ -1,20 +1,33 @@
 "use client";
 
+import * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { publicEnv } from "@/lib/env";
 import { trackEvent } from "@/lib/analytics";
 import { MessageCircle, Mail, Globe } from "lucide-react";
 
-function buildWhatsAppLink(reference?: string) {
-  const number = publicEnv.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/[^\d+]/g, "");
+function buildWhatsAppLink(number: string, reference?: string) {
+  const digits = number.replace(/[^\d+]/g, "");
   const message = reference
     ? `Hello Dravonix Media, I completed the Project Estimator. My estimate reference is ${reference}. I would like to discuss the project.`
     : "Hello Dravonix Media, I would like to discuss a project.";
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
 export function ContactCards({ reference }: { reference?: string }) {
-  const hasWhatsapp = !!publicEnv.NEXT_PUBLIC_WHATSAPP_NUMBER;
+  // WhatsApp number comes from window.__DRAVONIX_PUBLIC_ENV__ (injected by
+  // <RuntimeEnv /> in the root layout), not build-time NEXT_PUBLIC_
+  // inlining — that was proven unreliable on this Cloudflare deployment
+  // (frozen at whatever value existed during the separate CI build step).
+  // Read it in an effect (not directly during render) so the server-
+  // rendered HTML and the client's first hydration pass match — window
+  // isn't available during SSR.
+  const [whatsappNumber, setWhatsappNumber] = React.useState("");
+  React.useEffect(() => {
+    setWhatsappNumber(window.__DRAVONIX_PUBLIC_ENV__?.WHATSAPP_NUMBER ?? "");
+  }, []);
+
+  const hasWhatsapp = !!whatsappNumber;
   const emailSubject = reference ? `Project Estimate Enquiry — ${reference}` : "Project Estimate Enquiry";
   const mailtoLink = `mailto:${publicEnv.NEXT_PUBLIC_CONTACT_EMAIL}?subject=${encodeURIComponent(emailSubject)}`;
 
@@ -31,7 +44,7 @@ export function ContactCards({ reference }: { reference?: string }) {
       <div className="grid gap-4 sm:grid-cols-3">
         {hasWhatsapp && (
           <ContactCard
-            href={buildWhatsAppLink(reference)}
+            href={buildWhatsAppLink(whatsappNumber, reference)}
             icon={<MessageCircle className="h-5 w-5" />}
             label="Chat on WhatsApp"
             description="Get a quick response from our team."

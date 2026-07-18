@@ -6,6 +6,7 @@ import { getActiveServices } from "@/lib/pricing/active-services";
 import { generateEstimateReference } from "@/lib/estimator/reference";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { notifyAdminOfNewLead } from "@/lib/email/notify-admin";
 
 export const runtime = "nodejs";
 
@@ -159,6 +160,10 @@ export async function POST(request: Request) {
       type: "system",
       note: "Estimate generated",
     });
+
+    // Best-effort admin notification — never blocks or fails the response
+    // to the client (notifyAdminOfNewLead swallows its own errors).
+    await notifyAdminOfNewLead({ state, pricing, estimateReference: estimateRow.reference, leadReference });
 
     return NextResponse.json({ ok: true, reference: estimateRow.reference, leadReference }, { status: 200 });
   } catch (error) {

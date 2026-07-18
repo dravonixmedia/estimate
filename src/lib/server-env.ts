@@ -2,7 +2,7 @@ import "server-only";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 /**
- * Server-only secrets and Supabase/Claude config.
+ * Server-only secrets and Supabase/Claude/WhatsApp config.
  *
  * On Cloudflare Workers there is NO automatic bridge from the dashboard's
  * configured Variables/Secrets into `process.env` — that's a Node.js-only
@@ -13,34 +13,29 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
  * `process.env` for local `next dev`/`next start`, where real env vars
  * from `.env.local` work normally and the Cloudflare context isn't set up
  * unless `initOpenNextCloudflareForDev()` has been called.
+ *
+ * Non-secret values read this way too (not just secrets) — plaintext
+ * variables set only through the Cloudflare dashboard UI were found to be
+ * silently dropped on every Git-triggered deploy, since `wrangler deploy`
+ * treats `wrangler.toml`'s committed `[vars]` block as authoritative. See
+ * wrangler.toml for where these are actually declared.
  */
 function readCloudflareEnv(): Record<string, string | undefined> | null {
   try {
-    const env = getCloudflareContext().env as Record<string, string | undefined>;
-    console.log("[server-env] getCloudflareContext() succeeded, keys:", Object.keys(env));
-    return env;
-  } catch (error) {
-    console.log("[server-env] getCloudflareContext() threw:", error instanceof Error ? error.message : String(error));
+    return getCloudflareContext().env as Record<string, string | undefined>;
+  } catch {
     return null;
   }
 }
 
 export function getServerEnv() {
   const cf = readCloudflareEnv();
-  const result = {
+  return {
     SUPABASE_URL: cf?.SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
     SUPABASE_ANON_KEY: cf?.SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
     SUPABASE_SERVICE_ROLE_KEY: cf?.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
     CLAUDE_API_KEY: cf?.CLAUDE_API_KEY ?? process.env.CLAUDE_API_KEY ?? "",
     CLAUDE_MODEL: cf?.CLAUDE_MODEL ?? process.env.CLAUDE_MODEL ?? "claude-sonnet-5",
+    WHATSAPP_NUMBER: cf?.WHATSAPP_NUMBER ?? process.env.WHATSAPP_NUMBER ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
   };
-  console.log("[server-env] resolved (presence only):", {
-    SUPABASE_URL: !!result.SUPABASE_URL,
-    SUPABASE_ANON_KEY: !!result.SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: !!result.SUPABASE_SERVICE_ROLE_KEY,
-    CLAUDE_API_KEY: !!result.CLAUDE_API_KEY,
-    fromCloudflareContext: !!cf,
-    processEnvKeysAvailable: Object.keys(process.env).filter((k) => k.includes("SUPABASE") || k.includes("CLAUDE")),
-  });
-  return result;
 }

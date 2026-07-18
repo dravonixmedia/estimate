@@ -30,3 +30,14 @@ invocation_logs = true
 [vars]
 SUPABASE_URL = "https://npcaeaxvypndskgmtvph.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_qNM2a48RQ88fsl8R3yO3Eg_IUwUmHKO"
+
+# Lets the Worker send admin lead-notification emails via Cloudflare Email
+# Routing instead of a third-party provider/API key. Requires, one-time,
+# in the Cloudflare dashboard:
+#   1. Email → Email Routing → enable it for the dravonixmedia.com zone.
+#   2. Add admin@dravonixmedia.com as a destination address and verify it
+#      (click the link Cloudflare emails to that inbox).
+# See README "Email notifications" for the full walkthrough.
+[[send_email]]
+name = "SEND_EMAIL"
+destination_address = "admin@dravonixmedia.com"

@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { publicEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
 export default async function AdminSettingsPage() {
   const supabase = await createSupabaseServerClient();
@@ -12,7 +13,7 @@ export default async function AdminSettingsPage() {
   }
 
   const initial = {
-    whatsapp_number: getValue("whatsapp_number", publicEnv.NEXT_PUBLIC_WHATSAPP_NUMBER),
+    whatsapp_number: getValue("whatsapp_number", getServerEnv().WHATSAPP_NUMBER),
     contact_email: getValue("contact_email", publicEnv.NEXT_PUBLIC_CONTACT_EMAIL),
     disclaimer_text: getValue(
       "disclaimer_text",
