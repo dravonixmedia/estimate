@@ -22,15 +22,20 @@ const STEP_COMPONENTS: Record<StepId, React.ComponentType> = {
   review_generate: StepReview,
 };
 
-export function Wizard() {
+export function Wizard({ onHome }: { onHome: () => void }) {
   const { currentStepId } = useEstimator();
   const StepComponent = STEP_COMPONENTS[currentStepId];
 
   return (
     <div className="mx-auto flex min-h-svh max-w-2xl flex-col px-4 py-6 sm:py-10">
-      <div className="mb-6">
+      <button
+        type="button"
+        onClick={onHome}
+        className="mb-6 self-start rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        aria-label="Back to home"
+      >
         <Logo variant="full" href={null} className="h-8" />
-      </div>
+      </button>
       <WizardProgress />
       <StepComponent />
     </div>

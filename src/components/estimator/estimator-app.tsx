@@ -41,9 +41,15 @@ function EstimatorAppInner() {
     setStarted(true);
   }
 
+  function handleGoHome() {
+    setEstimatorStarted(false);
+    setStarted(false);
+    window.scrollTo({ top: 0 });
+  }
+
   if (!hydrated) return null;
 
-  return started ? <Wizard /> : <Landing onStart={handleStart} />;
+  return started ? <Wizard onHome={handleGoHome} /> : <Landing onStart={handleStart} />;
 }
 
 export function EstimatorApp() {
