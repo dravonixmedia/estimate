@@ -1,4 +1,4 @@
-import { getServerEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
 declare global {
   interface Window {

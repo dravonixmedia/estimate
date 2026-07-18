@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
-import { getServerEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
 /**
  * Privileged, service-role Supabase client. Used only from server-side

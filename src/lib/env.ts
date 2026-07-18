@@ -66,21 +66,6 @@ export const publicEnv: PublicEnv = new Proxy({} as PublicEnv, {
   },
 });
 
-/**
- * Server-only secrets. Importing this file from a client component is a
- * build-time error because it is never bundled into client code — every
- * consumer lives under `app/api/**` or other server-only modules.
- */
-export function getServerEnv() {
-  return {
-    SUPABASE_URL: process.env.SUPABASE_URL ?? "",
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ?? "",
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-    CLAUDE_API_KEY: process.env.CLAUDE_API_KEY ?? "",
-    CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? "claude-sonnet-5",
-  };
-}
-
 export function estimatorBasePath() {
   return publicEnv.NEXT_PUBLIC_ESTIMATOR_BASE_PATH.replace(/\/$/, "");
 }

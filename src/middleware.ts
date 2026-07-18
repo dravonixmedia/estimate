@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { publicEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
 /**
  * Refreshes the Supabase auth session on every /admin request (the
@@ -15,11 +15,12 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (!publicEnv.SUPABASE_URL || !publicEnv.SUPABASE_ANON_KEY) {
+  const env = getServerEnv();
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
     return response;
   }
 
-  const supabase = createServerClient(publicEnv.SUPABASE_URL, publicEnv.SUPABASE_ANON_KEY, {
+  const supabase = createServerClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

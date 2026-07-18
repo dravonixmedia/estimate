@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { publicEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 import { Logo } from "@/components/brand/logo";
 import { AdminLogoutButton } from "@/components/admin/logout-button";
 import { LayoutDashboard, Users, Tag, ToggleLeft, Settings } from "lucide-react";
@@ -15,7 +15,7 @@ const NAV_ITEMS = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  if (!publicEnv.SUPABASE_URL || !publicEnv.SUPABASE_ANON_KEY) {
+  if (!getServerEnv().SUPABASE_URL || !getServerEnv().SUPABASE_ANON_KEY) {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center gap-3 px-4 text-center">
         <Logo variant="mark" href={null} className="h-10" />

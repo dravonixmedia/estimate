@@ -1,14 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
-import { publicEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
 /** Server client for Server Components / Route Handlers, using the
  * anon key + the visitor's auth cookies (RLS enforced, admin-only). */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
+  const env = getServerEnv();
 
-  return createServerClient<Database>(publicEnv.SUPABASE_URL, publicEnv.SUPABASE_ANON_KEY, {
+  return createServerClient<Database>(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

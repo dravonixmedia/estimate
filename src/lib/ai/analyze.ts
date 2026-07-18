@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { aiInterpretationSchema, type AiInterpretation } from "@/lib/estimator/schema";
 import { SERVICE_CATALOG } from "@/lib/estimator/services";
-import { getServerEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
 const TIMEOUT_MS = 12_000;
 
