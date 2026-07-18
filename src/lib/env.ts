@@ -16,8 +16,12 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_TERMS_URL: z.string().url().default("https://estimate.dravonix.dev/terms"),
   NEXT_PUBLIC_PRICING_URL: z.string().url().default("https://www.dravonixmedia.com/pricing"),
   NEXT_PUBLIC_WHATSAPP_NUMBER: z.string().default(""),
-  // Exposed to the browser via next.config.ts `env` (not the NEXT_PUBLIC_
-  // prefix) because the Supabase anon key is safe to ship client-side.
+  // Not NEXT_PUBLIC_-prefixed, but safe to ship client-side (the anon key
+  // is designed to be public). The browser gets these via
+  // <RuntimeEnv /> (src/components/runtime-env.tsx), injected fresh by the
+  // root layout on every request — NOT via build-time inlining, which
+  // would freeze whatever value happened to be set in the CI build
+  // container rather than the deployed Worker's actual runtime config.
   SUPABASE_URL: z.string().default(""),
   SUPABASE_ANON_KEY: z.string().default(""),
 });
@@ -49,7 +53,18 @@ function readPublicEnv() {
   return parsed.data;
 }
 
-export const publicEnv = readPublicEnv();
+type PublicEnv = ReturnType<typeof readPublicEnv>;
+
+// A Proxy rather than a plain module-level const: server-side (route
+// handlers, Server Components) this guarantees every property access does
+// a *fresh* process.env read instead of one frozen at module-evaluation
+// time, which matters on Cloudflare Workers where request-scoped env
+// bindings may not be visible yet at cold-start module load.
+export const publicEnv: PublicEnv = new Proxy({} as PublicEnv, {
+  get(_target, prop: string) {
+    return readPublicEnv()[prop as keyof PublicEnv];
+  },
+});
 
 /**
  * Server-only secrets. Importing this file from a client component is a

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { publicEnv } from "@/lib/env";
 import { PwaRegister } from "@/components/pwa-register";
+import { RuntimeEnv } from "@/components/runtime-env";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -9,6 +10,15 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
 });
+
+// Force every route to render per-request rather than being statically
+// prerendered at build time. Without this, Next.js froze pages like `/`
+// and `/admin/login` as static HTML generated during the Cloudflare CI
+// build — baking in whatever <RuntimeEnv /> read at that moment (empty,
+// since the CI build container doesn't have the deployed Worker's runtime
+// env) and serving that same frozen HTML for every subsequent request,
+// no matter what was actually configured on Cloudflare afterwards.
+export const dynamic = "force-dynamic";
 
 const siteUrl = publicEnv.NEXT_PUBLIC_ESTIMATOR_URL;
 
@@ -80,6 +90,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={spaceGrotesk.variable}>
       <body className="antialiased bg-brand-background text-brand-text">
+        <RuntimeEnv />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         {children}
         <PwaRegister />
