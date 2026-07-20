@@ -29,8 +29,8 @@ const DIMENSIONS = {
     dark: { width: 3600, height: 1028 },
   },
   mark: {
-    light: { width: 797, height: 710 },
-    dark: { width: 797, height: 710 },
+    light: { width: 800, height: 800 },
+    dark: { width: 800, height: 800 },
   },
 } as const;
 
