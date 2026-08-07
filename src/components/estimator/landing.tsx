@@ -123,7 +123,7 @@ export function Landing({ onStart }: { onStart: () => void }) {
               Terms and Conditions
             </Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Dravonix Media</p>
+          <p>&copy; {new Date().getFullYear()} Dravonix Media Private Limited</p>
         </div>
       </footer>
     </div>
