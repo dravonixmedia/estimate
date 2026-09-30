@@ -73,7 +73,7 @@ export async function generateEstimatePdf(data: ResultPageData, reference: strin
     cursor,
     bold,
     regular,
-    "One-time",
+    "Estimated Project Investment",
     formatCurrencyRangePdf(data.estimate.one_time_min, data.estimate.one_time_max)
   );
   if (data.estimate.monthly_min > 0) {
@@ -81,7 +81,7 @@ export async function generateEstimatePdf(data: ResultPageData, reference: strin
       cursor,
       bold,
       regular,
-      "Monthly",
+      "Ongoing Services",
       `${formatCurrencyRangePdf(data.estimate.monthly_min, data.estimate.monthly_max)} / month`
     );
   }

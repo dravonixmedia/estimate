@@ -63,7 +63,7 @@ export default async function ResultPage({ params }: { params: Promise<{ referen
       <Card className="mb-6 border-brand-primary/30 bg-brand-primary/5">
         <CardContent className="space-y-4 py-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-brand-muted">One-time investment</p>
+            <p className="text-sm font-medium text-brand-muted">Estimated Project Investment</p>
             <Badge variant={estimate.confidence === "high" ? "success" : estimate.confidence === "medium" ? "warning" : "secondary"}>
               {confidenceLabel}
             </Badge>
@@ -71,10 +71,14 @@ export default async function ResultPage({ params }: { params: Promise<{ referen
           <p className="text-3xl font-semibold text-brand-text sm:text-4xl">
             {formatCurrencyRange(estimate.one_time_min, estimate.one_time_max)}
           </p>
+          <p className="text-sm text-brand-muted-foreground">Based on your selected project requirements.</p>
           {estimate.monthly_min > 0 && (
-            <p className="text-brand-muted-foreground">
-              Plus {formatCurrencyRange(estimate.monthly_min, estimate.monthly_max)} / month for ongoing services
-            </p>
+            <div className="border-t border-brand-border pt-3">
+              <p className="text-sm font-medium text-brand-muted">Ongoing Services</p>
+              <p className="text-lg font-semibold text-brand-text">
+                {formatCurrencyRange(estimate.monthly_min, estimate.monthly_max)} / month
+              </p>
+            </div>
           )}
           <p className="text-sm text-brand-muted-foreground">Estimated timeline: {estimate.estimated_timeline_label}</p>
           {estimate.custom_quotation_required && (
@@ -82,6 +86,10 @@ export default async function ResultPage({ params }: { params: Promise<{ referen
               This project needs a short consultation for an accurate custom quotation.
             </p>
           )}
+          <p className="text-xs text-brand-muted-foreground">
+            Your estimate is based on the requirements selected. Final pricing will be confirmed after reviewing the
+            complete project scope.
+          </p>
         </CardContent>
       </Card>
 

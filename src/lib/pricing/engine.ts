@@ -1,6 +1,11 @@
 import type { EstimatorState } from "@/lib/estimator/schema";
 import { LOGO_LEVEL_PRICING, SEO_TIER_PRICING, SERVICE_CATALOG, type ServiceDefinition, type ServiceId } from "@/lib/estimator/services";
 import { getMissingRequiredConcepts } from "@/lib/estimator/validation";
+import {
+  getCombinedProjectAdjustmentPercentage,
+  resolveOverlapExclusions,
+  SERVICE_PRICING_RULES,
+} from "@/lib/pricing/combined-project-config";
 
 /**
  * The one deterministic, server-side pricing module. Claude never touches
@@ -37,6 +42,23 @@ export type UpgradeSuggestion = {
 
 export type EstimateConfidence = "high" | "medium" | "low";
 
+/**
+ * Internal/admin-facing detail on how the final one-time investment was
+ * derived from the individual (unchanged) standalone service prices.
+ * Never presented to the customer as a "discount" — see result page.
+ */
+export type CombinedProjectAdjustment = {
+  eligibleOneTimeServiceCount: number;
+  percentage: number;
+  /** Raw sum of every one-time line, before the adjustment — eligible and excluded services alike. */
+  oneTimeSubtotalMin: number;
+  oneTimeSubtotalMax: number;
+  adjustmentAmountMin: number;
+  adjustmentAmountMax: number;
+  /** One-time services added at full standalone price, excluded from the discount tier itself. */
+  excludedFromAdjustmentServiceIds: ServiceId[];
+};
+
 export type PricingResult = {
   oneTimeMin: number;
   oneTimeMax: number;
@@ -54,6 +76,9 @@ export type PricingResult = {
   estimatedTimelineWeeksMax: number;
   confidence: EstimateConfidence;
   customQuotationRequired: boolean;
+  combinedProjectAdjustment: CombinedProjectAdjustment;
+  /** Service ids removed from the estimate because a configured overlap rule (see combined-project-config.ts) says another selected service already includes them. Empty until such a rule is explicitly configured. */
+  excludedOverlapServiceIds: ServiceId[];
 };
 
 const STANDARD_EXCLUSIONS = [
@@ -263,7 +288,12 @@ const FUTURE_EXPANSION_COPY: Partial<Record<ServiceId, string>> = {
 
 export function calculateEstimate(state: EstimatorState, activeServices?: readonly ServiceDefinition[]): PricingResult {
   const catalog = serviceMap(activeServices);
-  const selected = (state.services.selectedServices ?? []).filter((id: ServiceId) => catalog.has(id));
+  // Dedupe defensively: the UI's own toggle/merge logic never produces a
+  // duplicate id, but the engine shouldn't trust that from outside callers
+  // (e.g. a hand-crafted request body) and silently double-charge.
+  const selectedRaw = Array.from(new Set(state.services.selectedServices ?? []));
+  const overlapExclusions = resolveOverlapExclusions(selectedRaw);
+  const selected = selectedRaw.filter((id: ServiceId) => catalog.has(id) && !overlapExclusions.has(id));
 
   const breakdown: ServiceLine[] = [];
   let customQuotationRequired = false;
@@ -304,16 +334,50 @@ export function calculateEstimate(state: EstimatorState, activeServices?: readon
   const oneTimeLines = breakdown.filter((l) => l.unit === "one_time");
   const monthlyLines = breakdown.filter((l) => l.unit === "monthly");
 
-  const oneTimeMin = oneTimeLines.reduce((sum, l) => sum + l.min, 0);
-  const oneTimeMax = oneTimeLines.reduce((sum, l) => sum + l.max, 0);
+  // Combined-project adjustment: standalone service prices (each line's
+  // min/max above) are never changed. Only the final one-time total gets
+  // a bundle adjustment, and only across the services configured as
+  // eligible (see combined-project-config.ts) — never applied to monthly
+  // lines, and never applied more than once.
+  const eligibleOneTimeLines = oneTimeLines.filter((l) => SERVICE_PRICING_RULES[l.serviceId].eligibleForCombinedAdjustment);
+  const nonEligibleOneTimeLines = oneTimeLines.filter((l) => !SERVICE_PRICING_RULES[l.serviceId].eligibleForCombinedAdjustment);
+
+  const eligibleSubtotalMin = eligibleOneTimeLines.reduce((sum, l) => sum + l.min, 0);
+  const eligibleSubtotalMax = eligibleOneTimeLines.reduce((sum, l) => sum + l.max, 0);
+  const nonEligibleSubtotalMin = nonEligibleOneTimeLines.reduce((sum, l) => sum + l.min, 0);
+  const nonEligibleSubtotalMax = nonEligibleOneTimeLines.reduce((sum, l) => sum + l.max, 0);
+
+  const combinedProjectAdjustmentPercentage = getCombinedProjectAdjustmentPercentage(eligibleOneTimeLines.length);
+  // Kept at rupee precision (not rounded to the nearest ₹500 like display
+  // totals) so the admin-facing breakdown always matches the stated
+  // percentage exactly — e.g. 5% of ₹17,000 shows as ₹850, not ₹1,000.
+  const adjustmentAmountMin = Math.round(eligibleSubtotalMin * combinedProjectAdjustmentPercentage);
+  const adjustmentAmountMax = Math.round(eligibleSubtotalMax * combinedProjectAdjustmentPercentage);
+
+  // The customer-facing "Estimated Project Investment": eligible services
+  // at their bundle-adjusted price, plus excluded services at full price,
+  // rounded to a clean number for display (same convention as every other
+  // customer-facing figure in this module).
+  const oneTimeMin = round(eligibleSubtotalMin - adjustmentAmountMin + nonEligibleSubtotalMin);
+  const oneTimeMax = round(eligibleSubtotalMax - adjustmentAmountMax + nonEligibleSubtotalMax);
   const monthlyMin = monthlyLines.reduce((sum, l) => sum + l.min, 0);
   const monthlyMax = monthlyLines.reduce((sum, l) => sum + l.max, 0);
+
+  const combinedProjectAdjustment: CombinedProjectAdjustment = {
+    eligibleOneTimeServiceCount: eligibleOneTimeLines.length,
+    percentage: combinedProjectAdjustmentPercentage,
+    oneTimeSubtotalMin: eligibleSubtotalMin + nonEligibleSubtotalMin,
+    oneTimeSubtotalMax: eligibleSubtotalMax + nonEligibleSubtotalMax,
+    adjustmentAmountMin,
+    adjustmentAmountMax,
+    excludedFromAdjustmentServiceIds: nonEligibleOneTimeLines.map((l) => l.serviceId),
+  };
 
   const essentialLaunch: PricingBundle = {
     title: "Essential Launch",
     description: "The core deliverables needed to launch, priced at the lean end of your selected scope.",
-    min: oneTimeLines.reduce((sum, l) => sum + l.min, 0),
-    max: round(oneTimeLines.reduce((sum, l) => sum + l.min, 0) * 1.15),
+    min: oneTimeMin,
+    max: round(oneTimeMin * 1.15),
     includedServiceIds: oneTimeLines.map((l) => l.serviceId),
   };
 
@@ -383,6 +447,8 @@ export function calculateEstimate(state: EstimatorState, activeServices?: readon
     estimatedTimelineWeeksMax: weeksMax,
     confidence,
     customQuotationRequired,
+    combinedProjectAdjustment,
+    excludedOverlapServiceIds: Array.from(overlapExclusions),
   };
 }
 

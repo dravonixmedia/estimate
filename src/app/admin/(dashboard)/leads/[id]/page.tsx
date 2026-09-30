@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LeadStatusPanel } from "@/components/admin/lead-status-panel";
 import { formatCurrencyRange, formatDate } from "@/lib/format";
+import type { CombinedProjectAdjustment } from "@/lib/pricing/engine";
 
 export default async function AdminLeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,6 +20,16 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
   if (!lead) notFound();
 
   const latestEstimate = estimates?.[0];
+  const { data: latestEstimateItems } = latestEstimate
+    ? await supabase.from("estimate_items").select("*").eq("estimate_id", latestEstimate.id)
+    : { data: null };
+  // combinedProjectAdjustment rides inside recommended_solution (no schema
+  // migration — see api/estimate/route.ts); absent on estimates generated
+  // before this field existed, so every read here is optional.
+  const adjustment = latestEstimate?.recommended_solution as
+    | { combinedProjectAdjustment?: CombinedProjectAdjustment }
+    | undefined;
+  const combinedProjectAdjustment = adjustment?.combinedProjectAdjustment;
 
   return (
     <div className="space-y-6">
@@ -69,9 +80,37 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
               <CardContent className="space-y-1 text-sm text-brand-text">
                 <p className="text-lg font-semibold">
                   {formatCurrencyRange(latestEstimate.one_time_min, latestEstimate.one_time_max)}
+                  <span className="text-brand-muted-foreground"> one-time</span>
                 </p>
+                {latestEstimate.monthly_min > 0 && (
+                  <p>
+                    {formatCurrencyRange(latestEstimate.monthly_min, latestEstimate.monthly_max)}
+                    <span className="text-brand-muted-foreground"> / month ongoing</span>
+                  </p>
+                )}
+                {combinedProjectAdjustment && (
+                  <p className="text-brand-muted-foreground">
+                    Subtotal {formatCurrencyRange(combinedProjectAdjustment.oneTimeSubtotalMin, combinedProjectAdjustment.oneTimeSubtotalMax)}
+                    {combinedProjectAdjustment.percentage > 0
+                      ? ` · ${Math.round(combinedProjectAdjustment.percentage * 100)}% combined project adjustment (−${formatCurrencyRange(combinedProjectAdjustment.adjustmentAmountMin, combinedProjectAdjustment.adjustmentAmountMax)}) across ${combinedProjectAdjustment.eligibleOneTimeServiceCount} eligible services`
+                      : " · no combined project adjustment applied"}
+                  </p>
+                )}
                 <p>Confidence: {latestEstimate.confidence}</p>
                 <p>Reference: {latestEstimate.reference}</p>
+                {latestEstimateItems && latestEstimateItems.length > 0 && (
+                  <ul className="mt-2 space-y-0.5 border-t border-brand-border pt-2">
+                    {latestEstimateItems.map((item) => (
+                      <li key={item.id} className="flex items-center justify-between gap-2">
+                        <span>{item.name}</span>
+                        <span className="text-brand-muted-foreground">
+                          {formatCurrencyRange(item.price_min, item.price_max)}
+                          {item.unit === "monthly" ? " /mo" : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <a href={`/result/${latestEstimate.reference}`} className="text-brand-primary underline">
                   View result page
                 </a>

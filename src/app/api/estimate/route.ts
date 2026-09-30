@@ -127,7 +127,12 @@ export async function POST(request: Request) {
         monthly_min: pricing.monthlyMin,
         monthly_max: pricing.monthlyMax,
         essential_launch: pricing.essentialLaunch,
-        recommended_solution: pricing.recommendedSolution,
+        // combinedProjectAdjustment rides along inside this existing jsonb
+        // column (no schema migration needed) so admin/debugging can see
+        // how the final one-time figure was derived from the unchanged
+        // standalone service prices. Historical rows simply won't have
+        // this key — every reader treats it as optional.
+        recommended_solution: { ...pricing.recommendedSolution, combinedProjectAdjustment: pricing.combinedProjectAdjustment },
         optional_upgrades: pricing.optionalUpgrades,
         future_expansion: pricing.futureExpansion,
         assumptions: pricing.assumptions,

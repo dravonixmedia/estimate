@@ -88,8 +88,12 @@ function buildPlainTextSummary({
     ``,
     `Services: ${services}`,
     ``,
-    `One-time estimate: ${formatCurrencyRange(pricing.oneTimeMin, pricing.oneTimeMax)}`,
-    pricing.monthlyMin > 0 ? `Monthly estimate: ${formatCurrencyRange(pricing.monthlyMin, pricing.monthlyMax)}` : null,
+    `Estimated Project Investment: ${formatCurrencyRange(pricing.oneTimeMin, pricing.oneTimeMax)}`,
+    pricing.monthlyMin > 0 ? `Ongoing Services: ${formatCurrencyRange(pricing.monthlyMin, pricing.monthlyMax)} / month` : null,
+    `(Internal) One-time subtotal before adjustment: ${formatCurrencyRange(pricing.combinedProjectAdjustment.oneTimeSubtotalMin, pricing.combinedProjectAdjustment.oneTimeSubtotalMax)}`,
+    pricing.combinedProjectAdjustment.percentage > 0
+      ? `(Internal) Combined project adjustment: ${Math.round(pricing.combinedProjectAdjustment.percentage * 100)}% (${formatCurrencyRange(pricing.combinedProjectAdjustment.adjustmentAmountMin, pricing.combinedProjectAdjustment.adjustmentAmountMax)}) across ${pricing.combinedProjectAdjustment.eligibleOneTimeServiceCount} eligible services`
+      : null,
     `Confidence: ${pricing.confidence}`,
     `Timeline: ${pricing.estimatedTimelineLabel}`,
     ``,
