@@ -13,17 +13,21 @@ describe("getCombinedProjectAdjustmentPercentage", () => {
     expect(getCombinedProjectAdjustmentPercentage(1)).toBe(0);
   });
 
-  it("returns 5% for exactly two eligible services", () => {
-    expect(getCombinedProjectAdjustmentPercentage(2)).toBe(0.05);
+  it("returns 3% for exactly two eligible services", () => {
+    expect(getCombinedProjectAdjustmentPercentage(2)).toBe(0.03);
   });
 
-  it("returns 8% for exactly three eligible services", () => {
-    expect(getCombinedProjectAdjustmentPercentage(3)).toBe(0.08);
+  it("returns 5% for exactly three eligible services", () => {
+    expect(getCombinedProjectAdjustmentPercentage(3)).toBe(0.05);
   });
 
-  it("returns 10% for four eligible services, and stays at 10% beyond that", () => {
-    expect(getCombinedProjectAdjustmentPercentage(4)).toBe(0.1);
+  it("returns 8% for exactly four eligible services", () => {
+    expect(getCombinedProjectAdjustmentPercentage(4)).toBe(0.08);
+  });
+
+  it("returns 10% for five eligible services, and stays at 10% for six or more", () => {
     expect(getCombinedProjectAdjustmentPercentage(5)).toBe(0.1);
+    expect(getCombinedProjectAdjustmentPercentage(6)).toBe(0.1);
     expect(getCombinedProjectAdjustmentPercentage(20)).toBe(0.1);
   });
 });

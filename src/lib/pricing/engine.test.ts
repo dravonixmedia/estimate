@@ -132,22 +132,22 @@ describe("calculateEstimate — combined-project adjustment", () => {
     expect(result.oneTimeMax).toBe(12000);
   });
 
-  it("TEST 2 — two eligible one-time services get a 5% combined-project adjustment", () => {
+  it("TEST 2 — two eligible one-time services get a 3% combined-project adjustment", () => {
     const state = withClientDetails(
       buildEstimatorState({
         services: { selectedServices: ["brand_foundation", "social_profile_setup"], servicesNotSure: false },
       })
     );
     const result = calculateEstimate(state);
-    // subtotal 17000, 5% = 850 (kept precise for the admin-facing figure)
-    expect(result.combinedProjectAdjustment.percentage).toBe(0.05);
+    // subtotal 17000, 3% = 510 (kept precise for the admin-facing figure)
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.03);
     expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(17000);
-    expect(result.combinedProjectAdjustment.adjustmentAmountMin).toBe(850);
+    expect(result.combinedProjectAdjustment.adjustmentAmountMin).toBe(510);
     // final customer-facing total is rounded to the nearest ₹500
-    expect(result.oneTimeMin).toBe(16000);
+    expect(result.oneTimeMin).toBe(16500);
   });
 
-  it("TEST 3 — three eligible one-time services get an 8% combined-project adjustment", () => {
+  it("TEST 3 — three eligible one-time services get a 5% combined-project adjustment", () => {
     const state = withClientDetails(
       buildEstimatorState({
         services: {
@@ -157,11 +157,11 @@ describe("calculateEstimate — combined-project adjustment", () => {
       })
     );
     const result = calculateEstimate(state);
-    expect(result.combinedProjectAdjustment.percentage).toBe(0.08);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.05);
     expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(3);
   });
 
-  it("TEST 4 — four or more eligible one-time services get a 10% combined-project adjustment (matches worked example)", () => {
+  it("TEST 4 — four eligible one-time services get an 8% combined-project adjustment", () => {
     const state = withClientDetails(
       buildEstimatorState({
         services: {
@@ -172,8 +172,114 @@ describe("calculateEstimate — combined-project adjustment", () => {
       })
     );
     const result = calculateEstimate(state);
-    expect(result.combinedProjectAdjustment.percentage).toBe(0.1);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.08);
     expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(4);
+  });
+
+  it("TEST 4b — five eligible one-time services get a 10% combined-project adjustment", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: {
+          selectedServices: [
+            "brand_foundation",
+            "business_website",
+            "seo",
+            "social_profile_setup",
+            "video_production",
+          ],
+          servicesNotSure: false,
+        },
+        scope: { website: { pageCount: "1" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.1);
+    expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(5);
+  });
+
+  it("TEST 4c — six or more eligible one-time services stay capped at 10%", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: {
+          selectedServices: [
+            "brand_foundation",
+            "business_website",
+            "seo",
+            "social_profile_setup",
+            "video_production",
+            "content_creation",
+          ],
+          servicesNotSure: false,
+        },
+        scope: { website: { pageCount: "1" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.1);
+    expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(6);
+  });
+
+  it("matches the approved worked example: Business Website + SEO (2 eligible services, 3%)", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["business_website", "seo"], servicesNotSure: false },
+        scope: { website: { pageCount: "1" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    // Business Website (min, pageCount "1") = 25000, SEO (basic tier, no scope answered) = 3000.
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(28000);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.03);
+    // 28000 - (28000 * 0.03) = 27160, exactly as specified, before the
+    // application's existing round-to-nearest-₹500 customer-facing display.
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin - result.combinedProjectAdjustment.adjustmentAmountMin).toBe(
+      27160
+    );
+    expect(result.oneTimeMin).toBe(27000);
+  });
+
+  it("matches the approved worked example: 4 eligible services (8%)", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: {
+          selectedServices: ["brand_foundation", "business_website", "seo", "social_profile_setup"],
+          servicesNotSure: false,
+        },
+        scope: { website: { pageCount: "1" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    // 12000 + 25000 + 3000 + 5000 = 45000
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(45000);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.08);
+    // 45000 - (45000 * 0.08) = 41400, exactly as specified, before rounding.
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin - result.combinedProjectAdjustment.adjustmentAmountMin).toBe(
+      41400
+    );
+    expect(result.oneTimeMin).toBe(41500);
+  });
+
+  it("matches the approved worked example: same 4-service bundle plus Monthly Marketing stays separate", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: {
+          selectedServices: [
+            "brand_foundation",
+            "business_website",
+            "seo",
+            "social_profile_setup",
+            "monthly_marketing",
+          ],
+          servicesNotSure: false,
+        },
+        scope: { website: { pageCount: "1" }, marketing: { contentQuantity: "medium" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    expect(result.oneTimeMin).toBe(41500); // unchanged one-time adjusted calculation
+    expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(4); // monthly never counted
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.08);
+    expect(result.monthlyMin).toBeGreaterThan(0);
   });
 
   it("TEST 5 — one one-time service plus one monthly service stays fully separate, never a combined total", () => {
@@ -191,7 +297,7 @@ describe("calculateEstimate — combined-project adjustment", () => {
     expect(result.serviceBreakdown.find((l) => l.serviceId === "monthly_marketing")?.unit).toBe("monthly");
   });
 
-  it("TEST 6 — four one-time services + monthly marketing: 10% applies only to the one-time subtotal", () => {
+  it("TEST 6 — four one-time services + monthly marketing: 8% applies only to the one-time subtotal", () => {
     const state = withClientDetails(
       buildEstimatorState({
         services: {
@@ -208,7 +314,7 @@ describe("calculateEstimate — combined-project adjustment", () => {
       })
     );
     const result = calculateEstimate(state);
-    expect(result.combinedProjectAdjustment.percentage).toBe(0.1);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.08);
     expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(4);
     expect(result.monthlyMin).toBeGreaterThan(0);
     // Monthly total is untouched by the one-time adjustment percentage.
@@ -274,13 +380,14 @@ describe("calculateEstimate — combined-project adjustment", () => {
       })
     );
     const result = calculateEstimate(state);
-    // Only the 2 eligible services count toward the tier (still 5%, not 8%).
+    // Only the 2 eligible services count toward the tier (still 3%, not 5%)
+    // — an excluded service never bumps the eligible-service count.
     expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(2);
-    expect(result.combinedProjectAdjustment.percentage).toBe(0.05);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.03);
     expect(result.combinedProjectAdjustment.excludedFromAdjustmentServiceIds).toEqual(["domain_email_setup"]);
     // domain_email_setup (₹1,500 flat) is still added at full price.
     const domainLine = result.serviceBreakdown.find((l) => l.serviceId === "domain_email_setup")!;
-    expect(result.oneTimeMin).toBe(16000 + domainLine.min);
+    expect(result.oneTimeMin).toBe(16500 + domainLine.min);
   });
 
   it("never labels the combined-project adjustment as a discount anywhere in the pricing result", () => {

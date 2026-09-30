@@ -59,12 +59,13 @@ export const SERVICE_PRICING_RULES: Record<ServiceId, ServicePricingRule> = {
 
 /**
  * eligible one-time service count -> adjustment percentage.
- * 1 service: 0%, 2: 5%, 3: 8%, 4+: 10%.
+ * 1 service: 0%, 2: 3%, 3: 5%, 4: 8%, 5+: 10%.
  */
 const COMBINED_PROJECT_ADJUSTMENT_TIERS: { minServices: number; percentage: number }[] = [
-  { minServices: 4, percentage: 0.1 },
-  { minServices: 3, percentage: 0.08 },
-  { minServices: 2, percentage: 0.05 },
+  { minServices: 5, percentage: 0.1 },
+  { minServices: 4, percentage: 0.08 },
+  { minServices: 3, percentage: 0.05 },
+  { minServices: 2, percentage: 0.03 },
   { minServices: 1, percentage: 0 },
 ];
 
