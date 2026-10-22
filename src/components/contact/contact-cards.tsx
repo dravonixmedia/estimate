@@ -24,6 +24,10 @@ export function ContactCards({ reference }: { reference?: string }) {
   // isn't available during SSR.
   const [whatsappNumber, setWhatsappNumber] = React.useState("");
   React.useEffect(() => {
+    // window is only available client-side — this can't be computed during
+    // render for SSR, so the effect+setState hydration pattern is correct
+    // here, not the redundant-derived-state case this rule targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWhatsappNumber(window.__DRAVONIX_PUBLIC_ENV__?.WHATSAPP_NUMBER ?? "");
   }, []);
 

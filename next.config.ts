@@ -16,9 +16,11 @@ const nextConfig: NextConfig = {
   // src/components/runtime-env.tsx for how the browser gets these values
   // instead (injected per-request from the root layout, which does have
   // correct runtime env access).
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
+  // Next.js 16 removed the built-in `eslint` build-integration config
+  // option entirely (it no longer exists on NextConfig) — this project
+  // already runs ESLint as its own separate `npm run lint` step, so
+  // dropping this dead config changes nothing about whether lint errors
+  // are caught, only who catches them.
   async headers() {
     return [
       {

@@ -14,6 +14,9 @@ function EstimatorAppInner() {
   const searchParams = useSearchParams();
 
   React.useEffect(() => {
+    // localStorage is only available client-side — can't be read during
+    // SSR, so hydrating this state after mount is the correct pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStarted(getEstimatorStarted());
     setHydrated(true);
   }, []);

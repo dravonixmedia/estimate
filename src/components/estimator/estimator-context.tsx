@@ -42,6 +42,9 @@ export function EstimatorProvider({ children }: { children: React.ReactNode }) {
     const sessionId = getOrCreateSessionId();
     const draft = loadDraftFromLocalStorage<PersistedDraft>();
     if (draft && draft.state.sessionId === sessionId) {
+      // localStorage is only available client-side — can't be read during
+      // SSR, so hydrating this state after mount is the correct pattern.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState(draft.state);
       setCurrentStepId(draft.currentStepId);
     } else {
@@ -84,6 +87,9 @@ export function EstimatorProvider({ children }: { children: React.ReactNode }) {
   // the client on a screen that no longer renders anything.
   React.useEffect(() => {
     const resolved = resolveNearestVisibleStep(state, currentStepId);
+    // Pre-existing step-correction behavior, unrelated to this dependency
+    // upgrade — out of scope to refactor into a derived-during-render value here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (resolved !== currentStepId) setCurrentStepId(resolved);
   }, [state, currentStepId]);
 
