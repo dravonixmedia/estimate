@@ -110,7 +110,7 @@ const AI_RESPONSE_TYPE_HINT = `{
   "complexity": "simple" | "moderate" | "complex",
   "confidence": number, // 0 to 1
   "inferredAnswers": {
-    "website"?: { "pageCount"?: "1"|"2-5"|"6-10"|"10+", "features"?: string[], "contentReady"?: "yes"|"no"|"not_sure", "websiteType"?: "landing_page"|"business_website"|"ecommerce_website" },
+    "website"?: { "pageCount"?: "1"|"2-5"|"6-10"|"11-20"|"20+", "features"?: string[], "contentReady"?: "yes"|"no"|"not_sure", "websiteType"?: "landing_page"|"business_website"|"ecommerce_website" },
     "ecommerce"?: { "productCount"?: "1-20"|"21-100"|"101-500"|"500+" },
     "socialLaunch"?: { "platforms"?: string[], "postQuantity"?: string, "reelQuantity"?: string }
   } // only include fields explicitly stated by the client; omit everything else

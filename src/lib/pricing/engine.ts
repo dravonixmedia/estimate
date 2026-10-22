@@ -1,5 +1,15 @@
 import type { EstimatorState } from "@/lib/estimator/schema";
-import { LOGO_LEVEL_PRICING, SEO_TIER_PRICING, SERVICE_CATALOG, type ServiceDefinition, type ServiceId } from "@/lib/estimator/services";
+import {
+  BUSINESS_WEBSITE_PAGE_BANDS,
+  BUSINESS_WEBSITE_UNCONFIRMED_RANGE,
+  LANDING_PAGE_PRICING,
+  LOGO_LEVEL_PRICING,
+  PORTFOLIO_WEBSITE_PRICING,
+  SEO_TIER_PRICING,
+  SERVICE_CATALOG,
+  type ServiceDefinition,
+  type ServiceId,
+} from "@/lib/estimator/services";
 import { getMissingRequiredConcepts } from "@/lib/estimator/validation";
 import {
   getCombinedProjectAdjustmentPercentage,
@@ -129,25 +139,96 @@ function priceLogo(state: EstimatorState, catalog: ServiceDefinition): ServiceLi
   };
 }
 
-function priceWebsite(state: EstimatorState, catalog: ServiceDefinition, serviceId: ServiceId): ServiceLine {
+/**
+ * "landing_page" covers two outcomes — a true single-page Landing Page or
+ * a multi-page Portfolio Website — distinguished purely by the existing
+ * page-count answer (no new question): "1" page is a Landing Page,
+ * anything else is a Portfolio. See LANDING_PAGE_PRICING/
+ * PORTFOLIO_WEBSITE_PRICING in services.ts.
+ */
+function priceLandingPageOrPortfolio(state: EstimatorState, catalog: ServiceDefinition): ServiceLine {
   const scope = state.scope.website;
-  const pageBuckets: Record<string, number> = { "1": 0, "2-5": 0.25, "6-10": 0.55, "10+": 0.85 };
-  const position = scope?.pageCount ? pageBuckets[scope.pageCount] ?? 0.4 : 0.4;
-  const featureBoost = Math.min((scope?.features?.filter((f) => f !== "not_sure").length ?? 0) * 0.03, 0.2);
+  const pageCount = scope?.pageCount;
+  const featureCount = scope?.features?.filter((f) => f !== "not_sure").length ?? 0;
 
-  const min = catalog.priceMin;
-  const max = catalog.priceMax;
-  const target = scaleWithinRange(min, max, position + featureBoost);
-  const spread = round((max - min) * 0.15);
+  if (!pageCount || pageCount === "not_sure") {
+    return {
+      serviceId: "landing_page",
+      name: catalog.name,
+      unit: "one_time",
+      min: catalog.priceMin,
+      max: catalog.priceMax,
+      notes: "Page count not yet confirmed — showing a wider range.",
+    };
+  }
+
+  if (pageCount === "1") {
+    const featureBoost = Math.min(featureCount * 0.03, 0.15);
+    return {
+      serviceId: "landing_page",
+      name: LANDING_PAGE_PRICING.label,
+      unit: "one_time",
+      min: LANDING_PAGE_PRICING.min,
+      max: round(LANDING_PAGE_PRICING.max * (1 + featureBoost)),
+      notes: "Single-page landing site.",
+    };
+  }
+
+  const featureBoost = Math.min(featureCount * 0.03, 0.2);
+  return {
+    serviceId: "landing_page",
+    name: PORTFOLIO_WEBSITE_PRICING.label,
+    unit: "one_time",
+    min: PORTFOLIO_WEBSITE_PRICING.min,
+    max: round(PORTFOLIO_WEBSITE_PRICING.max * (1 + featureBoost)),
+    notes: `Based on ${pageCount} pages.`,
+  };
+}
+
+/**
+ * Approved page-count bands (see BUSINESS_WEBSITE_PAGE_BANDS) — each band
+ * is an independent min/max, not a position interpolated across one
+ * continuous catalog range, because the approved pricing has a deliberate
+ * jump between bands (e.g. ₹20,000 -> ₹22,000) that interpolation can't
+ * represent. The 20+ band is intentionally open-ended: its max grows with
+ * selected feature complexity rather than being capped.
+ */
+function priceBusinessWebsite(state: EstimatorState, catalog: ServiceDefinition): ServiceLine {
+  const scope = state.scope.website;
+  const pageCount = scope?.pageCount;
+  const featureCount = scope?.features?.filter((f) => f !== "not_sure").length ?? 0;
+  const band = pageCount && pageCount !== "not_sure" ? BUSINESS_WEBSITE_PAGE_BANDS[pageCount] : undefined;
+
+  if (!band) {
+    return {
+      serviceId: "business_website",
+      name: catalog.name,
+      unit: "one_time",
+      min: BUSINESS_WEBSITE_UNCONFIRMED_RANGE.min,
+      max: BUSINESS_WEBSITE_UNCONFIRMED_RANGE.max,
+      notes: "Page count not yet confirmed — showing a wide range across standard business-website scopes.",
+    };
+  }
+
+  const isOpenEnded = "openEnded" in band && band.openEnded === true;
+  const featureBoost = Math.min(featureCount * (isOpenEnded ? 0.05 : 0.03), isOpenEnded ? 0.5 : 0.2);
 
   return {
-    serviceId,
+    serviceId: "business_website",
     name: catalog.name,
     unit: "one_time",
-    min: Math.max(min, target - spread),
-    max: Math.min(max, target + spread),
-    notes: scope?.pageCount ? `Based on ${scope.pageCount} pages` : "Page count not yet confirmed — showing a wider range.",
+    min: band.min,
+    max: round(band.max * (1 + featureBoost)),
+    notes: isOpenEnded
+      ? `Based on ${band.label} — larger or more complex projects may exceed this starting range.`
+      : `Based on ${band.label}.`,
   };
+}
+
+function priceWebsite(state: EstimatorState, catalog: ServiceDefinition, serviceId: ServiceId): ServiceLine {
+  return serviceId === "landing_page"
+    ? priceLandingPageOrPortfolio(state, catalog)
+    : priceBusinessWebsite(state, catalog);
 }
 
 function priceEcommerce(state: EstimatorState, catalog: ServiceDefinition): ServiceLine {
@@ -166,7 +247,10 @@ function priceEcommerce(state: EstimatorState, catalog: ServiceDefinition): Serv
     name: catalog.name,
     unit: "one_time",
     min: Math.max(min, target - spread),
-    max: Math.min(max, target + spread),
+    // No upper cap: the approved ₹35,000–₹75,000 band is a *starting*
+    // range — larger or more complex stores may genuinely exceed it, so
+    // only the lower bound (min, above) is enforced as a floor.
+    max: target + spread,
     notes: scope?.productCount ? `Based on ${scope.productCount} products` : "Product count not yet confirmed — showing a wider range.",
   };
 }

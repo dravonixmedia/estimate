@@ -67,8 +67,14 @@ export const SERVICE_CATALOG: readonly ServiceDefinition[] = [
     name: "Business Website",
     category: "web",
     unit: "one_time",
-    priceMin: 25000,
-    priceMax: 60000,
+    // Representative display range only — the real price comes from
+    // BUSINESS_WEBSITE_PAGE_BANDS below (page count no longer scales
+    // continuously across one min-max span; see priceWebsite() in
+    // engine.ts). priceMin is the floor of the smallest band (1-5 pages);
+    // priceMax is the top of the largest *closed* band (11-20 pages) — a
+    // 20+ page site can genuinely price above this, by design.
+    priceMin: 8000,
+    priceMax: 50000,
     description: "A full multi-page website for an established business.",
   },
   {
@@ -76,9 +82,9 @@ export const SERVICE_CATALOG: readonly ServiceDefinition[] = [
     name: "E-commerce Website",
     category: "web",
     unit: "one_time",
-    priceMin: 45000,
-    priceMax: 200000,
-    description: "An online store with product catalogue and checkout.",
+    priceMin: 35000,
+    priceMax: 75000,
+    description: "An online store with product catalogue and checkout. Larger or more complex stores may exceed this starting range.",
   },
   {
     id: "social_profile_setup",
@@ -172,3 +178,37 @@ export const SEO_TIER_PRICING = {
   standard: { min: 4000, max: 5000, label: "Standard SEO Optimisation" },
   advanced: { min: 5000, max: 6000, label: "Advanced SEO Setup" },
 } as const;
+
+/**
+ * The "landing_page" catalog entry ("Landing Page or Portfolio") covers
+ * two distinct real-world outcomes that the questionnaire doesn't ask
+ * about as a separate question — it infers which one from the existing
+ * page-count answer instead (a true landing page is always 1 page; a
+ * portfolio is a multi-page showcase). Like LOGO_LEVEL_PRICING/
+ * SEO_TIER_PRICING above, these bypass the catalog's own priceMin/priceMax
+ * once the page count is known. See priceWebsite() in engine.ts.
+ */
+export const LANDING_PAGE_PRICING = { min: 4000, max: 6000, label: "Landing Page" } as const;
+export const PORTFOLIO_WEBSITE_PRICING = { min: 5000, max: 15000, label: "Portfolio Website" } as const;
+
+/**
+ * Approved Business Website pricing bands (reviewed Oct 2026). Page count
+ * no longer scales continuously across the catalog's single min-max span
+ * — the bands below are non-contiguous by design (there's a deliberate
+ * jump from ₹20,000 to ₹22,000 between the 1-5 and 6-10 page bands), which
+ * a single admin-editable Supabase range cannot represent. "10+" is the
+ * pre-widening legacy value (see schema.ts) and is mapped to the 11-20
+ * band as the conservative middle option. "20+" is intentionally
+ * open-ended — see priceWebsite()'s handling of it.
+ */
+export const BUSINESS_WEBSITE_PAGE_BANDS = {
+  "1": { min: 8000, max: 20000, label: "1-5 pages" },
+  "2-5": { min: 8000, max: 20000, label: "1-5 pages" },
+  "6-10": { min: 22000, max: 30000, label: "6-10 pages" },
+  "10+": { min: 32000, max: 50000, label: "11-20 pages" },
+  "11-20": { min: 32000, max: 50000, label: "11-20 pages" },
+  "20+": { min: 50000, max: 75000, label: "20+ pages", openEnded: true },
+} as const;
+
+/** Shown only while the page count isn't yet confirmed — spans every standard (non-open-ended) business-website band. */
+export const BUSINESS_WEBSITE_UNCONFIRMED_RANGE = { min: 8000, max: 50000 } as const;

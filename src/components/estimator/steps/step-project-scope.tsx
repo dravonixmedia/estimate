@@ -192,7 +192,8 @@ function WebsiteBlock({ state, services, updateScope }: BlockProps & { services:
           { value: "1", label: "1 page" },
           { value: "2-5", label: "2-5 pages" },
           { value: "6-10", label: "6-10 pages" },
-          { value: "10+", label: "10+ pages" },
+          { value: "11-20", label: "11-20 pages" },
+          { value: "20+", label: "20+ pages" },
           { value: "not_sure", label: "Not Sure" },
         ]}
         value={scope.pageCount}

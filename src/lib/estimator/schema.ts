@@ -118,7 +118,11 @@ export const brandScopeSchema = z.object({
 
 export const websiteScopeSchema = z.object({
   websiteType: z.enum(["landing_page", "business_website", "ecommerce_website", "not_sure"]).optional(),
-  pageCount: z.enum(["1", "2-5", "6-10", "10+", "not_sure"]).optional(),
+  // "10+" is kept (not removed) only so an in-flight browser draft saved
+  // before this enum was widened still validates — the UI no longer offers
+  // it, "11-20"/"20+" replace it going forward. See priceWebsite() in
+  // engine.ts for how each value maps to a page-count band.
+  pageCount: z.enum(["1", "2-5", "6-10", "10+", "11-20", "20+", "not_sure"]).optional(),
   contentReady: yesNoNotSureSchema.optional(),
   features: z
     .array(

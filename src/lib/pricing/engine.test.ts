@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { calculateEstimate } from "./engine";
 import { buildEstimatorState, withClientDetails } from "@/lib/estimator/fixtures";
+import type { ServiceId } from "@/lib/estimator/services";
 
 describe("calculateEstimate", () => {
   it("prices logo design within the basic tier when Basic Logo is selected", () => {
@@ -219,7 +220,7 @@ describe("calculateEstimate — combined-project adjustment", () => {
     expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(6);
   });
 
-  it("matches the approved worked example: Business Website + SEO (2 eligible services, 3%)", () => {
+  it("matches the approved worked example: Business Website (1-5 pages) + SEO (2 eligible services, 3%)", () => {
     const state = withClientDetails(
       buildEstimatorState({
         services: { selectedServices: ["business_website", "seo"], servicesNotSure: false },
@@ -227,15 +228,33 @@ describe("calculateEstimate — combined-project adjustment", () => {
       })
     );
     const result = calculateEstimate(state);
-    // Business Website (min, pageCount "1") = 25000, SEO (basic tier, no scope answered) = 3000.
-    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(28000);
+    // Business Website (1-5 page band, no scope-boosting features) = 8000, SEO (basic tier) = 3000.
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(11000);
     expect(result.combinedProjectAdjustment.percentage).toBe(0.03);
-    // 28000 - (28000 * 0.03) = 27160, exactly as specified, before the
-    // application's existing round-to-nearest-₹500 customer-facing display.
+    // 11000 - (11000 * 0.03) = 10670, before the application's existing
+    // round-to-nearest-₹500 customer-facing display.
     expect(result.combinedProjectAdjustment.oneTimeSubtotalMin - result.combinedProjectAdjustment.adjustmentAmountMin).toBe(
-      27160
+      10670
     );
-    expect(result.oneTimeMin).toBe(27000);
+    expect(result.oneTimeMin).toBe(10500);
+  });
+
+  it("matches Scenario I from the approved website pricing revision: Brand Foundation + Business Website (6-10 pages) (2 eligible services, 3%)", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["brand_foundation", "business_website"], servicesNotSure: false },
+        scope: { website: { pageCount: "6-10" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    // Brand Foundation (12000 flat) + Business Website 6-10 page band (22000-30000):
+    // min 12000+22000=34000, max 12000+30000=42000.
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(34000);
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMax).toBe(42000);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.03);
+    // Matches the approved example: "Estimated Project Investment: approximately ₹33,000–₹40,500."
+    expect(result.oneTimeMin).toBe(33000);
+    expect(result.oneTimeMax).toBe(40500);
   });
 
   it("matches the approved worked example: 4 eligible services (8%)", () => {
@@ -249,14 +268,14 @@ describe("calculateEstimate — combined-project adjustment", () => {
       })
     );
     const result = calculateEstimate(state);
-    // 12000 + 25000 + 3000 + 5000 = 45000
-    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(45000);
+    // 12000 + 8000 + 3000 + 5000 = 28000
+    expect(result.combinedProjectAdjustment.oneTimeSubtotalMin).toBe(28000);
     expect(result.combinedProjectAdjustment.percentage).toBe(0.08);
-    // 45000 - (45000 * 0.08) = 41400, exactly as specified, before rounding.
+    // 28000 - (28000 * 0.08) = 25760, before rounding.
     expect(result.combinedProjectAdjustment.oneTimeSubtotalMin - result.combinedProjectAdjustment.adjustmentAmountMin).toBe(
-      41400
+      25760
     );
-    expect(result.oneTimeMin).toBe(41500);
+    expect(result.oneTimeMin).toBe(26000);
   });
 
   it("matches the approved worked example: same 4-service bundle plus Monthly Marketing stays separate", () => {
@@ -276,7 +295,7 @@ describe("calculateEstimate — combined-project adjustment", () => {
       })
     );
     const result = calculateEstimate(state);
-    expect(result.oneTimeMin).toBe(41500); // unchanged one-time adjusted calculation
+    expect(result.oneTimeMin).toBe(26000); // unchanged one-time adjusted calculation
     expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(4); // monthly never counted
     expect(result.combinedProjectAdjustment.percentage).toBe(0.08);
     expect(result.monthlyMin).toBeGreaterThan(0);
@@ -404,5 +423,248 @@ describe("calculateEstimate — combined-project adjustment", () => {
     const serialized = JSON.stringify(result).toLowerCase();
     expect(serialized).not.toContain("discount");
     expect(serialized).not.toContain("you saved");
+  });
+});
+
+describe("calculateEstimate — approved website pricing revision (Oct 2026)", () => {
+  function websiteLine(result: ReturnType<typeof calculateEstimate>, serviceId: "landing_page" | "business_website" | "ecommerce_website" | "custom_web_app") {
+    return result.serviceBreakdown.find((l) => l.serviceId === serviceId)!;
+  }
+
+  it("Scenario A — Landing Page (1 page): base range ₹4,000–₹6,000", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["landing_page"], servicesNotSure: false },
+        scope: { website: { pageCount: "1" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    const line = websiteLine(result, "landing_page");
+    expect(line.name).toBe("Landing Page");
+    expect(line.min).toBe(4000);
+    expect(line.max).toBe(6000);
+  });
+
+  it("Scenario B — Portfolio Website (multi-page): base range ₹5,000–₹15,000", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["landing_page"], servicesNotSure: false },
+        scope: { website: { pageCount: "2-5" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    const line = websiteLine(result, "landing_page");
+    expect(line.name).toBe("Portfolio Website");
+    expect(line.min).toBe(5000);
+    expect(line.max).toBe(15000);
+  });
+
+  it("Scenario C — Business Website, 1-5 pages: base range ₹8,000–₹20,000", () => {
+    for (const pageCount of ["1", "2-5"] as const) {
+      const state = withClientDetails(
+        buildEstimatorState({
+          services: { selectedServices: ["business_website"], servicesNotSure: false },
+          scope: { website: { pageCount } },
+        })
+      );
+      const result = calculateEstimate(state);
+      const line = websiteLine(result, "business_website");
+      expect(line.min).toBe(8000);
+      expect(line.max).toBe(20000);
+    }
+  });
+
+  it("Scenario D — Business Website, 6-10 pages: base range ₹22,000–₹30,000", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["business_website"], servicesNotSure: false },
+        scope: { website: { pageCount: "6-10" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    const line = websiteLine(result, "business_website");
+    expect(line.min).toBe(22000);
+    expect(line.max).toBe(30000);
+  });
+
+  it("Scenario E — Business Website, 11-20 pages: base range ₹32,000–₹50,000", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["business_website"], servicesNotSure: false },
+        scope: { website: { pageCount: "11-20" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    const line = websiteLine(result, "business_website");
+    expect(line.min).toBe(32000);
+    expect(line.max).toBe(50000);
+  });
+
+  it("Scenario E (legacy) — the pre-widening '10+' value is still valid and maps to the 11-20 band", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["business_website"], servicesNotSure: false },
+        scope: { website: { pageCount: "10+" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    const line = websiteLine(result, "business_website");
+    expect(line.min).toBe(32000);
+    expect(line.max).toBe(50000);
+  });
+
+  it("Scenario F — Business Website, more than 20 pages: can exceed ₹50,000 with no artificial cap", () => {
+    const standard = calculateEstimate(
+      withClientDetails(
+        buildEstimatorState({
+          services: { selectedServices: ["business_website"], servicesNotSure: false },
+          scope: { website: { pageCount: "20+" } },
+        })
+      )
+    );
+    const standardLine = websiteLine(standard, "business_website");
+    expect(standardLine.min).toBe(50000);
+    expect(standardLine.max).toBeGreaterThan(50000);
+
+    const complex = calculateEstimate(
+      withClientDetails(
+        buildEstimatorState({
+          services: { selectedServices: ["business_website"], servicesNotSure: false },
+          scope: {
+            website: {
+              pageCount: "20+",
+              features: [
+                "contact_form",
+                "booking",
+                "online_payments",
+                "blog",
+                "user_login",
+                "multi_language",
+                "admin_dashboard",
+                "advanced_animation",
+              ],
+            },
+          },
+        })
+      )
+    );
+    const complexLine = websiteLine(complex, "business_website");
+    // More complexity pushes the open-ended max higher still.
+    expect(complexLine.max).toBeGreaterThan(standardLine.max);
+  });
+
+  it("Scenario G — E-commerce Website: standard starting range ₹35,000–₹75,000, exceeds it with added complexity", () => {
+    const standard = calculateEstimate(
+      withClientDetails(
+        buildEstimatorState({
+          services: { selectedServices: ["ecommerce_website"], servicesNotSure: false },
+          scope: { ecommerce: { productCount: "1-20" } },
+        })
+      )
+    );
+    const standardLine = websiteLine(standard, "ecommerce_website");
+    expect(standardLine.min).toBe(35000);
+    expect(standardLine.max).toBeLessThanOrEqual(75000);
+
+    const complex = calculateEstimate(
+      withClientDetails(
+        buildEstimatorState({
+          services: { selectedServices: ["ecommerce_website"], servicesNotSure: false },
+          scope: {
+            ecommerce: {
+              productCount: "500+",
+              advancedFeatures: [
+                "inventory_management",
+                "customer_accounts",
+                "product_variations",
+                "discount_coupons",
+                "order_tracking",
+                "multicurrency",
+              ],
+            },
+          },
+        })
+      )
+    );
+    const complexLine = websiteLine(complex, "ecommerce_website");
+    // No artificial maximum — a large, complex store exceeds the ₹75,000 starting-range ceiling.
+    expect(complexLine.max).toBeGreaterThan(75000);
+  });
+
+  it("Scenario H — Custom Web Application: starts from ₹1,00,000", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: { selectedServices: ["custom_web_app"], servicesNotSure: false },
+        scope: {
+          webApp: {
+            problemToSolve: "We need to manage bookings and staff schedules across three locations.",
+            primaryUsers: "Staff and front-desk managers",
+            extraRequirements: ["none"],
+          },
+        },
+      })
+    );
+    const result = calculateEstimate(state);
+    const line = websiteLine(result, "custom_web_app");
+    expect(line.min).toBe(100000);
+  });
+
+  it("Scenario I — Brand Foundation + Business Website (6-10 pages) + Monthly Marketing: one-time and ongoing stay separate", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: {
+          selectedServices: ["brand_foundation", "business_website", "monthly_marketing"],
+          servicesNotSure: false,
+        },
+        scope: { website: { pageCount: "6-10" }, marketing: { contentQuantity: "medium" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    // "Estimated Project Investment: approximately ₹33,000–₹40,500."
+    expect(result.oneTimeMin).toBe(33000);
+    expect(result.oneTimeMax).toBe(40500);
+    expect(result.combinedProjectAdjustment.eligibleOneTimeServiceCount).toBe(2);
+    expect(result.combinedProjectAdjustment.percentage).toBe(0.03);
+    // "Ongoing Services: ₹14,000–₹20,000/month" — verified against the
+    // application's actual calculation rather than hardcoded.
+    const marketingLine = result.serviceBreakdown.find((l) => l.serviceId === "monthly_marketing")!;
+    expect(result.monthlyMin).toBe(marketingLine.min);
+    expect(result.monthlyMax).toBe(marketingLine.max);
+    expect(result.monthlyMin).toBeGreaterThan(0);
+  });
+});
+
+describe("calculateEstimate — unrelated services are unaffected by the website pricing revision", () => {
+  it("Brand Foundation, Logo Design, SEO, Social Media Launch, Social Profile Setup, Monthly Marketing, Content Creation, Video Production, and Domain/Email Setup keep their exact existing prices", () => {
+    const state = withClientDetails(
+      buildEstimatorState({
+        services: {
+          selectedServices: [
+            "brand_foundation",
+            "logo_design",
+            "seo",
+            "social_media_launch",
+            "social_profile_setup",
+            "monthly_marketing",
+            "content_creation",
+            "video_production",
+            "domain_email_setup",
+          ],
+          servicesNotSure: false,
+        },
+        scope: { logo: { logoLevel: "professional" }, marketing: { contentQuantity: "medium" } },
+      })
+    );
+    const result = calculateEstimate(state);
+    const line = (id: ServiceId) => result.serviceBreakdown.find((l) => l.serviceId === id)!;
+
+    expect(line("brand_foundation")).toMatchObject({ min: 12000, max: 12000 });
+    expect(line("logo_design")).toMatchObject({ min: 3000, max: 4500 }); // professional tier, unchanged
+    expect(line("seo")).toMatchObject({ min: 3000, max: 4000 }); // basic tier, unchanged
+    expect(line("social_media_launch")).toMatchObject({ min: 15000 });
+    expect(line("social_profile_setup")).toMatchObject({ min: 5000, max: 5000 });
+    expect(line("content_creation")).toMatchObject({ min: 5000, max: 20000 });
+    expect(line("video_production")).toMatchObject({ min: 8000, max: 40000 });
+    expect(line("domain_email_setup")).toMatchObject({ min: 1500, max: 4000 });
   });
 });
