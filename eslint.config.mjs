@@ -14,9 +14,11 @@ const eslintConfig = [
     ignores: [
       "node_modules/**",
       ".next/**",
-      // opennextjs-cloudflare's generated Worker bundle — never meant to be
-      // linted as project source.
+      // opennextjs-cloudflare's generated Worker bundle, and wrangler
+      // dev's own local temp bundle — never meant to be linted as
+      // project source.
       ".open-next/**",
+      ".wrangler/**",
       "out/**",
       "build/**",
       "next-env.d.ts",
